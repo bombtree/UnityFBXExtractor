@@ -24,8 +24,6 @@ namespace FBXAssetExtractor
             { typeof(GameObject),   ".prefab"},
         };
 
-        private UnityEngine.Object fbxObject = null;
-
         private string meshFolder, animationFolder, prefabFolder, materialFolder = null;
 
         private ExtractableObjectsGUI<Mesh> extractableMeshGUI;
@@ -53,7 +51,7 @@ namespace FBXAssetExtractor
 
             var window = GetWindow<FBXAssetExtractor>();
 
-            window.Initialize(window.fbxObject);
+            window.Initialize(Selection.activeObject);
         }
 
         private void OnGUI()
@@ -83,7 +81,9 @@ namespace FBXAssetExtractor
         private void Initialize(UnityEngine.Object parentFbxObject)
         {
             string assetPath = AssetDatabase.GetAssetPath(parentFbxObject);
-            string assetFolder = assetPath.Remove(assetPath.LastIndexOf('/') + 1);
+            int lastSlash = assetPath.LastIndexOf('/') + 1;
+            string assetFolder = assetPath.Remove(lastSlash);
+            
             meshFolder = assetFolder + "Meshes";
             animationFolder = assetFolder + "Animations";
             prefabFolder = assetFolder + "Prefabs";
@@ -95,7 +95,7 @@ namespace FBXAssetExtractor
             extractableGameObjectGUI = new ExtractableObjectsGUI<GameObject>("Prefabs", prefabFolder);
 
             UnityEngine.Object[] objects = AssetDatabase.LoadAllAssetsAtPath(assetPath);
-
+            
             //Iterate through all of the sub objects of the asset, and add them to the respective extractable GUI object.
             for (int objectIndex = 0; objectIndex < objects.Length; ++objectIndex)
             {
@@ -105,6 +105,7 @@ namespace FBXAssetExtractor
                 extractableAnimationGUI.TryAddExtractableObject(currentObject) ||
                  extractableMaterialGUI.TryAddExtractableObject(currentObject))
                 {
+                    Debug.Log("adding: " + currentObject.name);
                     //We have found a regular asset to extract. And we added them to the respective GUI objects
                 }
                 else if (currentObject is GameObject && (currentObject as GameObject).transform.parent == null)
