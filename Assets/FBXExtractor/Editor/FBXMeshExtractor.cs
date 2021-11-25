@@ -18,17 +18,19 @@ namespace FBXAssetExtractor
         private static readonly string prefabExtension = ".prefab";
         private static readonly Dictionary<Type, string> typeToExtension = new Dictionary<Type, string>()
         {
-            { typeof(Mesh),         ".asset" },
+            { typeof(Mesh),         ".mesh" },
             { typeof(AnimationClip),".anim"},
             { typeof(Material),     ".mat"},
+            { typeof(Avatar),       ".asset" },
             { typeof(GameObject),   ".prefab"},
         };
 
-        private string meshFolder, animationFolder, prefabFolder, materialFolder = null;
+        private string meshFolder, animationFolder, prefabFolder, materialFolder, avatarFolder = null;
 
         private ExtractableObjectsGUI<Mesh> extractableMeshGUI;
         private ExtractableObjectsGUI<AnimationClip> extractableAnimationGUI;
         private ExtractableObjectsGUI<Material> extractableMaterialGUI;
+        private ExtractableObjectsGUI<Avatar> extractableAvatarGUI;
         private ExtractableObjectsGUI<GameObject> extractableGameObjectGUI;
 
         /// <summary>
@@ -59,6 +61,7 @@ namespace FBXAssetExtractor
             extractableMeshGUI.DrawGUI();
             extractableAnimationGUI.DrawGUI();
             extractableMaterialGUI.DrawGUI();
+            extractableAvatarGUI.DrawGUI();
             extractableGameObjectGUI.DrawGUI();
 
             if (GUILayout.Button("Extract!", GUILayout.Width(100.0f)))
@@ -68,6 +71,7 @@ namespace FBXAssetExtractor
                     extractableMeshGUI.GetAllObjectsToExtractAndFolder(),
                     extractableAnimationGUI.GetAllObjectsToExtractAndFolder(),
                     extractableMaterialGUI.GetAllObjectsToExtractAndFolder(),
+                    extractableAvatarGUI.GetAllObjectsToExtractAndFolder(),
                     extractableGameObjectGUI.GetAllObjectsToExtractAndFolder()
                     );
             }
@@ -88,10 +92,12 @@ namespace FBXAssetExtractor
             animationFolder = assetFolder + "Animations";
             prefabFolder = assetFolder + "Prefabs";
             materialFolder = assetFolder + "Materials";
+            avatarFolder = assetFolder + "Avatars";
 
             extractableMeshGUI = new ExtractableObjectsGUI<Mesh>("Meshes", meshFolder);
             extractableAnimationGUI = new ExtractableObjectsGUI<AnimationClip>("Animations", animationFolder);
             extractableMaterialGUI = new ExtractableObjectsGUI<Material>("Materials", materialFolder);
+            extractableAvatarGUI = new ExtractableObjectsGUI<Avatar>("Avatars", avatarFolder);
             extractableGameObjectGUI = new ExtractableObjectsGUI<GameObject>("Prefabs", prefabFolder);
 
             UnityEngine.Object[] objects = AssetDatabase.LoadAllAssetsAtPath(assetPath);
@@ -100,12 +106,15 @@ namespace FBXAssetExtractor
             for (int objectIndex = 0; objectIndex < objects.Length; ++objectIndex)
             {
                 UnityEngine.Object currentObject = objects[objectIndex];
-
+                if(currentObject is Avatar)
+                {
+                    Debug.Log("Found avatar: " + currentObject.name);
+                }
                 if ( extractableMeshGUI.TryAddExtractableObject(currentObject) ||
                 extractableAnimationGUI.TryAddExtractableObject(currentObject) ||
+                extractableAvatarGUI.TryAddExtractableObject(currentObject)||
                  extractableMaterialGUI.TryAddExtractableObject(currentObject))
                 {
-                    Debug.Log("adding: " + currentObject.name);
                     //We have found a regular asset to extract. And we added them to the respective GUI objects
                 }
                 else if (currentObject is GameObject && (currentObject as GameObject).transform.parent == null)
@@ -120,15 +129,17 @@ namespace FBXAssetExtractor
             Tuple<List<Mesh>, string> meshesAndFoldername,
             Tuple<List<AnimationClip>, string> animationsAndFoldername,
             Tuple<List<Material>, string> materialsAndFoldername,
+            Tuple<List<Avatar>, string> avatarsAndFoldername,
             Tuple<List<GameObject>, string> prefabsAndFoldername)
         {
-            int totalItems = meshesAndFoldername.Item1.Count + animationsAndFoldername.Item1.Count + materialsAndFoldername.Item1.Count + prefabsAndFoldername.Item1.Count;
+            int totalItems = meshesAndFoldername.Item1.Count + animationsAndFoldername.Item1.Count + materialsAndFoldername.Item1.Count + avatarsAndFoldername.Item1.Count + prefabsAndFoldername.Item1.Count;
             ItemProgress itemProgress = new ItemProgress(totalItems, "Extracting FBX");
             //Keep track of the saved meshes and materials by name, so that we can replace them in the prefabs if necessary.
             Dictionary<string, Mesh> savedMeshes = SaveItemsToFolder(meshesAndFoldername.Item1, meshesAndFoldername.Item2, itemProgress);
             Dictionary<string, Material> savedMaterials = SaveItemsToFolder(materialsAndFoldername.Item1, materialsAndFoldername.Item2, itemProgress);
             //Animations do not need to be tracked in a dictionary since they will not be attached to the gameobject components.
             SaveItemsToFolder(animationsAndFoldername.Item1, animationsAndFoldername.Item2, itemProgress);
+            SaveItemsToFolder(avatarsAndFoldername.Item1, avatarsAndFoldername.Item2, itemProgress);
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
